@@ -9,7 +9,7 @@
 ## Usage
 
 ```shell
-python main.py run --name aa --memory 10m --cpushares 512 --network net1 --ip 10.0.0.1/24 -it bash
+python main.py run --name aa --memory 10m --cpu_cfs_period_us 100000 --cpu_cfs_quota_us 50000 --network net1 --ip 10.0.0.1/24 -it bash
 ```
 
 ## Note
