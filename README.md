@@ -8,18 +8,15 @@
 
 ## Usage
 
-```shell
-python main.py run --name aa --memory 10m --cpu_cfs_period_us 100000 --cpu_cfs_quota_us 50000 --network net1 --ip 10.0.0.1/24 -it bash
-```
-
-## Note
-
-从 docker 获取 centos 的全部文件：
-
+首先需要获取一个 centos 镜像
 ```shell
 docker create centos
 docker ps -a
-
 docker export -o centos.tar [containerID]
-tar -xvf centos.tar -C centos/
+```
+
+在容器中执行
+
+```shell
+python main.py run --name aa --memory 10m --cpu_cfs_period_us 100000 --cpu_cfs_quota_us 50000 --network net1 --ip 10.0.0.1/24 -it bash
 ```

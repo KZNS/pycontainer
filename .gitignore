@@ -1,4 +1,6 @@
 .vscode
 .containers
 
+centos.tar
+
 __pycache__
