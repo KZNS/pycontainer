@@ -21,7 +21,7 @@ def init_container():
 
     if not os.path.exists(cfg["container_root"]):
         os.makedirs(cfg["container_root"])
-        os.system("tar -xf centos.tar -C {}".format(cfg["container_root"]))
+        os.system("sudo tar -xf centos.tar -C {}".format(cfg["container_root"]))
 
     os.system("sudo cgcreate -g cpu,memory:{}".format(cfg["cgroup_root"]))
 
@@ -29,6 +29,18 @@ def init_container():
         os.system(
             "sudo cgset -r cpu.shares={} {}".format(
                 cfg["cpu_shares"], cfg["cgroup_root"]
+            )
+        )
+    if cfg["cpu_cfs_period_us"] > 0:
+        os.system(
+            "sudo cgset -r cpu.cfs_period_us={} {}".format(
+                cfg["cpu_cfs_period_us"], cfg["cgroup_root"]
+            )
+        )
+    if cfg["cpu_cfs_quota_us"] > 0:
+        os.system(
+            "sudo cgset -r cpu.cfs_quota_us={} {}".format(
+                cfg["cpu_cfs_quota_us"], cfg["cgroup_root"]
             )
         )
     if cfg["memory_limit_in_bytes"] > 0:
@@ -50,7 +62,6 @@ def run_in_container(run_task: str):
         netns_opt = "--net=" + os.path.join("/var/run/netns", cfg["netns_name"])
     else:
         netns_opt = "--net"
-    print(netns_opt)
     proc = subprocess.Popen(
         "sudo cgexec -g cpu,memory:{} sudo unshare --ipc --uts {} --user -r --mount --root {} --pid --mount-proc --fork {}".format(
             cfg["cgroup_root"], netns_opt, cfg["container_root"], run_task
@@ -59,8 +70,6 @@ def run_in_container(run_task: str):
     )
 
     network.init_netns(cfg["netns_name"], cfg["ip_addr"])
-
-    # os.system("sudo cgclassify -g cpu,memory:{} {}".format(cgroup_root, proc.pid))
 
     proc.wait()
 
@@ -72,7 +81,16 @@ def exit_container():
 
 def run(argv: List[str]):
     short_opts = "hit:m:"
-    long_opts = ["help", "name=", "cpushares=", "memory=", "network=", "ip="]
+    long_opts = [
+        "help",
+        "name=",
+        "cpu_shares=",
+        "cpu_cfs_period_us=",
+        "cpu_cfs_quota_us=",
+        "memory=",
+        "network=",
+        "ip=",
+    ]
 
     opts, args = getopt.getopt(argv, short_opts, long_opts)
 
@@ -80,6 +98,8 @@ def run(argv: List[str]):
 
     cfg["container_name"] = ""
     cfg["cpu_shares"] = -1
+    cfg["cpu_cfs_period_us"] = -1
+    cfg["cpu_cfs_quota_us"] = -1
     cfg["memory_limit_in_bytes"] = -1
     cfg["network_name"] = ""
 
@@ -90,12 +110,16 @@ def run(argv: List[str]):
             pass
         elif opt == "--name":
             cfg["container_name"] = arg
-        elif opt == "--cpushares":
+        elif opt == "--cpu_shares":
             if arg.isdigit() and 1 <= int(arg) <= 1024:
                 cfg["cpu_shares"] = int(arg)
             else:
                 print("illegal cpu_shares = {}".format(arg))
                 return -1
+        elif opt == "--cpu_cfs_period_us":
+            cfg["cpu_cfs_period_us"] = int(arg)
+        elif opt == "--cpu_cfs_quota_us":
+            cfg["cpu_cfs_quota_us"] = int(arg)
         elif opt in ["-m", "--memory"]:
             if arg.isdigit():
                 cfg["memory_limit_in_bytes"] = int(arg)
