@@ -3,6 +3,7 @@ import os
 import subprocess
 from typing import List
 from . import network
+from . import cgroup
 
 cfg = {}
 
@@ -23,32 +24,13 @@ def init_container():
         os.makedirs(cfg["container_root"])
         os.system("sudo tar -xf centos.tar -C {}".format(cfg["container_root"]))
 
-    os.system("sudo cgcreate -g cpu,memory:{}".format(cfg["cgroup_root"]))
-
-    if cfg["cpu_shares"] > 0:
-        os.system(
-            "sudo cgset -r cpu.shares={} {}".format(
-                cfg["cpu_shares"], cfg["cgroup_root"]
-            )
-        )
-    if cfg["cpu_cfs_period_us"] > 0:
-        os.system(
-            "sudo cgset -r cpu.cfs_period_us={} {}".format(
-                cfg["cpu_cfs_period_us"], cfg["cgroup_root"]
-            )
-        )
-    if cfg["cpu_cfs_quota_us"] > 0:
-        os.system(
-            "sudo cgset -r cpu.cfs_quota_us={} {}".format(
-                cfg["cpu_cfs_quota_us"], cfg["cgroup_root"]
-            )
-        )
-    if cfg["memory_limit_in_bytes"] > 0:
-        os.system(
-            "sudo cgset -r memory.limit_in_bytes={} {}".format(
-                cfg["memory_limit_in_bytes"], cfg["cgroup_root"]
-            )
-        )
+    cgroup.cgroup_create(
+        cfg["cgroup_root"],
+        cfg["cpu_shares"],
+        cfg["cpu_cfs_period_us"],
+        cfg["cpu_cfs_quota_us"],
+        cfg["memory_limit_in_bytes"],
+    )
 
     if cfg["network_name"]:
         cfg["netns_name"] = cfg["container_name"] + "_net"
@@ -75,7 +57,7 @@ def run_in_container(run_task: str):
 
 
 def exit_container():
-    os.system("sudo cgdelete -r -g cpu,memory:{}".format(cfg["cgroup_root"]))
+    cgroup.cgroup_delete(cfg["cgroup_root"])
     network.disconnect(cfg["network_name"], cfg["netns_name"])
 
 
